@@ -1,6 +1,8 @@
 .vs/
 Binaries/
+Build/
 Intermediate/
+Packaged/
 Saved/
 .vsconfig
 *.sln

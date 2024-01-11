@@ -7,7 +7,7 @@
 #include "Logging/MessageLog.h"
 #include "HAL/UnrealMemory.h"
 #include "Kismet/GameplayStatics.h"
-// #include "TcpSocketSettings.h"
+#include "Components/TextRenderComponent.h"
 
 // Sets default values
 ASpeechActor::ASpeechActor()
@@ -49,7 +49,16 @@ void ASpeechActor::BeginPlay()
 void ASpeechActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+}
 
+void ASpeechActor::SetDisplayText(FString Text)
+{
+	if (this->DisplayText) {
+		UTextRenderComponent* TextComponent = this->DisplayText->GetTextRender();
+		if (TextComponent) {
+			TextComponent->SetText(FText::FromString(Text));
+		}
+	}
 }
 
 void ASpeechActor::startTalking(Speech_Result& Result)
@@ -59,7 +68,7 @@ void ASpeechActor::startTalking(Speech_Result& Result)
 	MixerDevice->RegisterSoundSubmix(Submix);
 	MixerDevice->StartRecording(Submix, 0);
 	Submix->SetSubmixOutputVolume(GetWorld(), 0);
-
+	this->SetDisplayText(TEXT("Hold <Space> and talk,\nrelease when finished."));
 	Result = Speech_Result::Then;
 }
 
@@ -79,6 +88,7 @@ void ASpeechActor::stopTalking(Speech_Result& Result)
 	if (InDataSize > 0) {
 		UE_LOG(LogTemp, Warning, TEXT("SpeechActor: First sample=%f"), InData[0]);
 	}
+	this->SetDisplayText(TEXT("Resampling..."));
 	// resample 48000 to 16000 and 2 channels to 1 channel, and amplify
 	float MaxVal = 0;
 	Audio::FAlignedFloatBuffer Buffer;
@@ -99,7 +109,8 @@ void ASpeechActor::stopTalking(Speech_Result& Result)
 		Data[i] = Data[i] / MaxVal;
 	}
 	// this->Socket->SetNonBlocking(false);
-	
+
+	this->SetDisplayText(TEXT("Sending audio to server..."));
 	int32 BytesTransferred;
 	UE_LOG(LogTemp, Warning, TEXT("SpeechActor: Sending data size..."));
 	BytesTransferred = 0;
@@ -115,6 +126,8 @@ void ASpeechActor::stopTalking(Speech_Result& Result)
 		Result = Speech_Result::Error;
 		return;
 	}
+
+	this->SetDisplayText(TEXT("Waiting for reply from server..."));
 	UE_LOG(LogTemp, Warning, TEXT("SpeechActor: Receiving data size..."));
 	BytesTransferred = 0;
 	if (!Socket->Recv((uint8*)&DataSize, 4, BytesTransferred, ESocketReceiveFlags::WaitAll) || BytesTransferred != 4) {
@@ -130,11 +143,14 @@ void ASpeechActor::stopTalking(Speech_Result& Result)
 		return;
 	}
 	UE_LOG(LogTemp, Warning, TEXT("SpeechActor: Successfully receiveed data."));
-	Result = Speech_Result::Then;
 
+	this->SetDisplayText(TEXT("Starting audio playback..."));
 	Audio::FSampleBuffer SampleBuffer(Buffer, 1, 16000);
 	Audio::FSoundWavePCMWriter Writer;
 	USoundWave* SoundWave = Writer.SynchronouslyWriteSoundWave(SampleBuffer);
 	UGameplayStatics::PlaySound2D(GetWorld(), SoundWave);
+
+	this->SetDisplayText(TEXT("Press and hold <Space> to talk"));
+	Result = Speech_Result::Then;
 }
 

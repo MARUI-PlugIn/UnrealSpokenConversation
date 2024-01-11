@@ -15,6 +15,7 @@
 #include "Sockets.h"
 #include "HAL/RunnableThread.h"
 #include "Async/Async.h"
+#include "Engine/TextRenderActor.h"
 
 #include "SpeechActor.generated.h"
 
@@ -40,11 +41,13 @@ protected:
 	FSocket* Socket;
 	UAudioCaptureComponent* AudioCapture;
 	USoundSubmix* Submix;
-
+	void SetDisplayText(FString Text);
 public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Speech")
+	ATextRenderActor* DisplayText = nullptr;
 
 	UFUNCTION(BlueprintCallable, Category = "Speech", Meta = (DisplayName = "Start Taking", ExpandEnumAsExecs = "Result"))
 	void startTalking(Speech_Result& Result);
